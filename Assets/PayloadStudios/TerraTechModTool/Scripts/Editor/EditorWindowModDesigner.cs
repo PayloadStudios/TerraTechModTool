@@ -691,11 +691,12 @@ public class EditorWindowModDesigner : EditorWindow
 				}
 
 				// Copy dll if we have one
-				if (File.Exists($"{mod.WorkingDir}/{mod.ModName}.dll"))
-				{
-					File.Copy($"{mod.WorkingDir}/{mod.ModName}.dll", $"{mod.OutputDir}/{mod.ModName}.dll", true);
-				}
-
+				string[] dlls = System.IO.Directory.GetFiles(mod.WorkingDir, "*.dll");
+				foreach (string path in dlls)
+                {
+					string filename = Path.GetFileName(path);
+					File.Copy(path, $"{mod.OutputDir}/{filename}");
+                }
 				succcess = true;
 
 				Debug.Log($"Successfully created bundle for {mod.name} at {mod.OutputDir}");
