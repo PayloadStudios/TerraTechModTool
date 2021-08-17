@@ -695,7 +695,7 @@ public class EditorWindowModDesigner : EditorWindow
 				foreach (string path in dlls)
                 {
 					string filename = Path.GetFileName(path);
-					File.Copy(path, $"{mod.OutputDir}/{filename}");
+					File.Copy(path, $"{mod.OutputDir}/{filename}", true);
                 }
 				succcess = true;
 
@@ -703,7 +703,7 @@ public class EditorWindowModDesigner : EditorWindow
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"Failed to create bundle for {mod.name} due to: {e.StackTrace}");
+				Debug.LogError($"Failed to create bundle for {mod.name} due to: {e}");
 			}
 		}
 
