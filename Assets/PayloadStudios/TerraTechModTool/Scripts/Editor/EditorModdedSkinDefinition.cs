@@ -45,7 +45,7 @@ public class EditorModdedSkinDefinition : Editor
 						m_SelectedCorp = i;
 				}
 
-				m_SelectedCorp = GUILayout.SelectionGrid(m_SelectedCorp, EditorWindowModDesigner.AvailableCorpIcons, 3, EditorGUITT.corpButton);
+				m_SelectedCorp = GUILayout.SelectionGrid(m_SelectedCorp, EditorWindowModDesigner.AvailableCorpIcons, EditorWindowModDesigner.kVanillaCorps.Length, EditorGUITT.corpButton);
 				if (m_SelectedCorp != -1 && EditorWindowModDesigner.AvailableCorps[m_SelectedCorp] != m_SelectedSkin.m_Corporation)
 				{
 					dirty = true;

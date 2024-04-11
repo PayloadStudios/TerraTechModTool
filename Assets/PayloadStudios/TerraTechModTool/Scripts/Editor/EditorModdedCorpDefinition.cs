@@ -58,7 +58,7 @@ public class EditorModdedCorpDefinition : Editor
 					m_SelectedRewardCorp = i;
 			}
 
-			m_SelectedRewardCorp = GUILayout.SelectionGrid(m_SelectedRewardCorp, EditorWindowModDesigner.VanillaCorpIcons, 6, EditorGUITT.corpButton);
+			m_SelectedRewardCorp = GUILayout.SelectionGrid(m_SelectedRewardCorp, EditorWindowModDesigner.VanillaCorpIcons, EditorWindowModDesigner.kVanillaCorps.Length, EditorGUITT.corpButton);
 			if (m_SelectedRewardCorp != -1 && EditorWindowModDesigner.kVanillaCorps[m_SelectedRewardCorp] != m_SelectedCorp.m_RewardCorp)
 			{
 				dirty = true;

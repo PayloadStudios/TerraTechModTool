@@ -26,6 +26,7 @@ public class EditorWindowModDesigner : EditorWindow
 		"VEN",
 		"HE",
 		"BF",
+		"SJ",
 		"EXP",
 	};
 
