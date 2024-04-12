@@ -40,6 +40,19 @@ public enum DamageableType
 	Volatile,
 	Shield,
 	Wood,
-	Rock
+	Rock,
+	Compound
+}
+
+public enum FactionType
+{
+	GSO = 1,
+	GC,
+	EXP, // also known as Reticule Research (RR)
+    VEN,
+	HE,
+	SPE,
+	BF,
+	SJ,
 }
 

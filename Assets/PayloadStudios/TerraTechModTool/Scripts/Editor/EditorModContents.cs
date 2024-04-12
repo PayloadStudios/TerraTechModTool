@@ -376,7 +376,25 @@ public class EditorModContents : Editor
 	private static readonly Regex getFaction = new Regex("\"Faction\":\\s*([0-9])");
 	private static readonly Regex getCategory = new Regex("\"Category\":\\s*([0-9])");
 
-	private void ImportBlocks(string contentsPath, ModContents contents)
+	private static bool TryGetCapturedString(Match regexMatch, out string capture) => TryGetCapturedString(regexMatch, 0, out capture);
+	private static bool TryGetCapturedString(Match regexMatch, int captureIdx, out string capture)
+	{
+		if (regexMatch != null && regexMatch.Groups != null)
+		{
+			// Match.Groups[0] is the same as Match.Value, so start at group 1 for captured groups
+			int groupIdx = captureIdx + 1;
+			if (regexMatch.Groups.Count > groupIdx)
+			{
+				Group matchGroup = regexMatch.Groups[groupIdx];
+				capture = matchGroup.Value;
+				return true;
+			}
+		}
+		capture = null;
+		return false;
+	}
+
+		private void ImportBlocks(string contentsPath, ModContents contents)
 	{
 		string blocksPath = $"{contentsPath}/Blocks";
 
@@ -390,29 +408,28 @@ public class EditorModContents : Editor
 			if (!text.Contains("\"NuterraBlock\""))
 			{
 				string formattedText = StripComments(text);
-				Match grade = getGrade.Match(formattedText);
-
-				StringBuilder sb = new StringBuilder(formattedText);
-				if (grade != null && grade.Groups != null && grade.Groups.Count >= 2)
+				
+				string IncrementGradeByOne(Match gradeMatch)
 				{
-					Group gradeGroup = grade.Groups[1];
-					int indexed0 = int.Parse(gradeGroup.Value);
-					sb[gradeGroup.Index] = (indexed0 + 1).ToString()[0];
+					if (TryGetCapturedString(gradeMatch, out string gradeStr))
+					{
+						return (int.Parse(gradeStr) + 1).ToString();
+					}
+					return string.Empty;
 				}
 
-				sb.Insert(0, "{\n\t\"NuterraBlock\":\n");
-				sb.Append("}");
-				text = sb.ToString();
+				text = getGrade.Replace(formattedText, gradeMatch => IncrementGradeByOne(gradeMatch));
 
+				text = $"{{\n\t\"NuterraBlock\":\n{formattedText}}}";
 				File.WriteAllText(file, text);
 			}
 
 			// See if we can find the name
 			string displayName = file;
 			Match match = Regex.Match(text, "\"Name\":\\s*?\"(.*?)\"");
-			if (match != null && match.Groups != null && match.Groups.Count >= 2)
+			if (TryGetCapturedString(match, out string specifiedName))
 			{
-				displayName = match.Groups[1].Value;
+				displayName = specifiedName;
 			}
 
 			// Get block JSON and asset
@@ -428,42 +445,20 @@ public class EditorModContents : Editor
 				blockAsset.m_BlockDisplayName = displayName;
 
 				Match faction = getFaction.Match(text);
-				if (faction != null && faction.Groups != null && faction.Groups.Count >- 2)
-                {
-					int factionInd = int.Parse(faction.Groups[1].Value);
-					string factionStr = "GSO";
-					switch (factionInd)
-                    {
-						case 1:
-							factionStr = "GSO";
-							break;
-						case 2:
-							factionStr = "GC";
-							break;
-						case 3:
-							factionStr = "EXP";
-							break;
-						case 4:
-							factionStr = "VEN";
-							break;
-						case 5:
-							factionStr = "HE";
-							break;
-						case 6:
-							factionStr = "SPE";
-							break;
-						default:
-							factionStr = "GSO";
-							break;
-                    }
-					blockAsset.m_Corporation = factionStr;
+				if (TryGetCapturedString(faction, out string factionIndexStr))
+				{
+					if (!int.TryParse(factionIndexStr, out int factionInt))
+					{
+						factionInt = (int)FactionType.GSO;
+					}
+					blockAsset.m_Corporation = ((FactionType)factionInt).ToString();
 				}
 
 				Match category = getCategory.Match(text);
-				if (category != null && category.Groups != null && category.Groups.Count > -2)
+				if (TryGetCapturedString(category, out string categoryIndexStr))
 				{
-					int categoryInd = int.Parse(category.Groups[1].Value);
-					blockAsset.m_Category = (BlockCategories) categoryInd;
+					int categoryInd = int.Parse(categoryIndexStr);
+					blockAsset.m_Category = (BlockCategories)categoryInd;
 				}
 
 				blockAsset.m_Icon = new Texture2D(512, 512);
