@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Text;
 using UnityEditor;
 using UnityEngine;
 
@@ -296,7 +298,7 @@ public class EditorModContents : Editor
 		serializedObject.ApplyModifiedProperties();
 	}
 
-	private void SetEditorTarget(Object target)
+	private void SetEditorTarget(UnityEngine.Object target)
 	{
 		if (target != null)
 		{
@@ -348,7 +350,7 @@ public class EditorModContents : Editor
 
 		string[] folders = new string[] { blocksPath };
 
-		foreach (UnityEngine.Object item in AssetDatabase.FindAssets("t:Mesh t:Texture", folders).Select(GUID => AssetDatabase.LoadAssetAtPath<Object>(AssetDatabase.GUIDToAssetPath(GUID))))
+		foreach (UnityEngine.Object item in AssetDatabase.FindAssets("t:Mesh t:Texture", folders).Select(GUID => AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(AssetDatabase.GUIDToAssetPath(GUID))))
 		{
 			if (!contents.m_AdditionalAssets.Contains(item))
 			{
@@ -358,6 +360,21 @@ public class EditorModContents : Editor
 
 		AssetImportCatcher.ManualSaveAssets();
 	}
+
+	private static string StripComments(string input)
+	{
+		// JavaScriptSerializer doesn't accept commented-out JSON,
+		// so we'll strip them out ourselves;
+		input = Regex.Replace(input, @"^\s*//.*$", "", RegexOptions.Multiline);  // removes line comments like this
+		input = Regex.Replace(input, @"/\*(\s|\S)*?\*/", "", RegexOptions.Multiline); /* comments like this */
+		input = Regex.Replace(input, @"([,\[\{\]\}\." + Regex.Escape("\"") + @"0-9]|null)\s*//[^\n]*\n", "$1\n", RegexOptions.Multiline);    // Removes mixed JSON comments
+		input = Regex.Replace(input, @",\s*([\}\]])", "\n$1", RegexOptions.Multiline);  // remove trailing ,
+		return input.Replace("JSONBLOCK", "Deserializer");
+	}
+
+	private static readonly Regex getGrade = new Regex("\"Grade\":\\s*([0-9])");
+	private static readonly Regex getFaction = new Regex("\"Faction\":\\s*([0-9])");
+	private static readonly Regex getCategory = new Regex("\"Category\":\\s*([0-9])");
 
 	private void ImportBlocks(string contentsPath, ModContents contents)
 	{
@@ -372,7 +389,21 @@ public class EditorModContents : Editor
 			string text = File.ReadAllText(file);
 			if (!text.Contains("\"NuterraBlock\""))
 			{
-				text = "{\n\t\"NuterraBlock\":\n" + text + "}";
+				string formattedText = StripComments(text);
+				Match grade = getGrade.Match(formattedText);
+
+				StringBuilder sb = new StringBuilder(formattedText);
+				if (grade != null && grade.Groups != null && grade.Groups.Count >= 2)
+				{
+					Group gradeGroup = grade.Groups[1];
+					int indexed0 = int.Parse(gradeGroup.Value);
+					sb[gradeGroup.Index] = (indexed0 + 1).ToString()[0];
+				}
+
+				sb.Insert(0, "{\n\t\"NuterraBlock\":\n");
+				sb.Append("}");
+				text = sb.ToString();
+
 				File.WriteAllText(file, text);
 			}
 
@@ -396,6 +427,47 @@ public class EditorModContents : Editor
 
 				blockAsset.m_BlockDisplayName = displayName;
 
+				Match faction = getFaction.Match(text);
+				if (faction != null && faction.Groups != null && faction.Groups.Count >- 2)
+                {
+					int factionInd = int.Parse(faction.Groups[1].Value);
+					string factionStr = "GSO";
+					switch (factionInd)
+                    {
+						case 1:
+							factionStr = "GSO";
+							break;
+						case 2:
+							factionStr = "GC";
+							break;
+						case 3:
+							factionStr = "EXP";
+							break;
+						case 4:
+							factionStr = "VEN";
+							break;
+						case 5:
+							factionStr = "HE";
+							break;
+						case 6:
+							factionStr = "SPE";
+							break;
+						default:
+							factionStr = "GSO";
+							break;
+                    }
+					blockAsset.m_Corporation = factionStr;
+				}
+
+				Match category = getCategory.Match(text);
+				if (category != null && category.Groups != null && category.Groups.Count > -2)
+				{
+					int categoryInd = int.Parse(category.Groups[1].Value);
+					blockAsset.m_Category = (BlockCategories) categoryInd;
+				}
+
+				blockAsset.m_Icon = new Texture2D(512, 512);
+
 				TextAsset JSON = AssetDatabase.LoadAssetAtPath<TextAsset>(blockJSONPath);
 				blockAsset.m_Json = JSON;
 
@@ -406,6 +478,8 @@ public class EditorModContents : Editor
 				prefab.AddComponent<TankBlockTemplate>();
 				prefab.AddComponent<MeshFilter>();
 				prefab.AddComponent<MeshRenderer>();
+				prefab.AddComponent<MeshRendererTemplate>();
+				prefab.AddComponent<BoxCollider>();
 				blockAsset.m_PhysicalPrefab = PrefabUtility.SaveAsPrefabAsset(prefab, blockPrefabPath).GetComponent<TankBlockTemplate>();
 				DestroyImmediate(prefab);
 				EditorUtility.SetDirty(target);
